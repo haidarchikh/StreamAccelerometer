@@ -80,7 +80,7 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
         mHostPort = Integer.parseInt(hostPort.getText().toString());
         switch (view.getId()) {
             case R.id.buttonStreamWrite:
-                mTcpStreamWrite = new TcpStreamWrite(mHostIP,mHostPort , mLabel);
+                mTcpStreamWrite = new TcpStreamWrite(mHostIP,mHostPort , mLabel , mTraining);
                 mTcpStreamWrite.setRuning(true);
                 mTcpStreamWrite.start();
                 break;
@@ -134,12 +134,7 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
     @Override
     public void onSensorChanged(SensorEvent event) {
         if(mTcpStreamWrite != null) {
-            if(mTraining){
-                mTcpStreamWrite.streamTraining(event.values[0], event.values[1],event.values[2]);
-            }else{
-                mTcpStreamWrite.stream(event.values[0], event.values[1],event.values[2]);
-            }
-
+            mTcpStreamWrite.stream(event.values[0], event.values[1],event.values[2]);
         }
     }
 

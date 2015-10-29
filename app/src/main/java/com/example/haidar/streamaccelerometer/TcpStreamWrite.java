@@ -29,15 +29,19 @@ public class TcpStreamWrite extends Thread  {
     private String mHostIP;
     private int mHostport;
     private String mLabel;
-    private boolean mGo = true;
+    private volatile float mTiltX;
+    private volatile float mTiltY;
+    private volatile float mTiltZ;
+    private boolean mTraining ;
     public static final DecimalFormat mDF = new DecimalFormat("0.000");
-    private static final int MAX_CONCURRENT_THREADS = 1;
-    private final Semaphore mLock = new Semaphore(MAX_CONCURRENT_THREADS, true);
 
-    public TcpStreamWrite(String IP , int port , String label){
+
+
+    public TcpStreamWrite(String IP , int port , String label , boolean training){
         mHostIP = IP;
         mHostport = port;
         mLabel = label;
+        mTraining = training;
     }
     @Override
     public void run() {
@@ -52,54 +56,57 @@ public class TcpStreamWrite extends Thread  {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        // create a0. socket
-        while(running){
-            if(mGo){
+        if(mTraining){
+            while(running){
+
+                mJSON = new JSONObject();
+                try {
+                    mJSON.put("x", mDF.format(mTiltX));
+                    mJSON.put("y", mDF.format(mTiltY));
+                    mJSON.put("z", mDF.format(mTiltZ));
+                    mJSON.put("label", mLabel);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
                 pw.println(mJSON);
                 pw.flush();
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            pw.close();
+
+        }else {
+            while(running){
+
+                mJSON = new JSONObject();
+                try {
+                    mJSON.put("x", mDF.format(mTiltX));
+                    mJSON.put("y", mDF.format(mTiltY));
+                    mJSON.put("z", mDF.format(mTiltZ));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                pw.println(mJSON);
+                pw.flush();
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
+            pw.close();
         }
-        pw.close();
+
     }
 
 
-    public void streamTraining(float tiltX, float tiltY , float tiltZ ) {
-
-        String X = mDF.format(tiltX);
-        String Y = mDF.format(tiltY);
-        String Z = mDF.format(tiltZ);
-        mGo = false;
-        mJSON = new JSONObject();
-            try {
-                mJSON.put("x", X);
-                mJSON.put("y", Y);
-                mJSON.put("z", Z);
-                mJSON.put("Label", mLabel);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        mGo = true;
-        }
     public void stream(float tiltX, float tiltY , float tiltZ ) {
-
-        String X = mDF.format(tiltX);
-        String Y = mDF.format(tiltY);
-        String Z = mDF.format(tiltZ);
-        mGo = false;
-        mJSON = new JSONObject();
-        try {
-            mJSON.put("x", X);
-            mJSON.put("y", Y);
-            mJSON.put("z", Z);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        mGo = true;
+        mTiltX = tiltX;
+        mTiltY = tiltY;
+        mTiltZ = tiltZ;
     }
 
 
