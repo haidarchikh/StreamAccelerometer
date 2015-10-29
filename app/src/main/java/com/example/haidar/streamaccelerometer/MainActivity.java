@@ -36,6 +36,7 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
     private Switch mSwitch;
     private boolean mTraining;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
