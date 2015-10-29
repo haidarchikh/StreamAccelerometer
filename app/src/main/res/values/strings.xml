@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">StreamAccelerometer</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+
+    <string-array name="labels">
+        <item>lying</item>
+        <item>running</item>
+        <item>sitting</item>
+        <item>standing</item>
+        <item>walking</item>
+    </string-array>
+</resources>
