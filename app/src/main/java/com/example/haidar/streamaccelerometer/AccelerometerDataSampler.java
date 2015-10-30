@@ -11,7 +11,8 @@ import java.text.DecimalFormat;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 /**
- * Created by haidar on 2015-10-30.
+ * Created by haidar  on 2015-10-30.
+ * StreamAccelerometer
  */
 public class AccelerometerDataSampler implements SensorEventListener , Runnable {
 
@@ -28,10 +29,10 @@ public class AccelerometerDataSampler implements SensorEventListener , Runnable 
     private volatile float mTiltZ;
     private volatile long mTimeStamp;
     private boolean running;
-    public static final DecimalFormat mDF = new DecimalFormat("0.000");
     private BlockingQueue<JSONObject> mQTCP = new ArrayBlockingQueue<JSONObject>(100);
     private BlockingQueue<Integer> mQ = new ArrayBlockingQueue<Integer>(100);
-
+    private static final long NS2MS = 1L / 1000000L;
+    private static final DecimalFormat mDF = new DecimalFormat("0.000");
 
     public AccelerometerDataSampler(SensorManager mSensorManager ,String mHostIP , int mHostport ,
                                     String mLabel , boolean mTraining){
@@ -104,8 +105,8 @@ public class AccelerometerDataSampler implements SensorEventListener , Runnable 
         mTiltY = event.values[1];
         mTiltZ = event.values[2];
         mTimeStamp = System.currentTimeMillis();
+    //  mTimeStamp = System.currentTimeMillis()-(System.nanoTime()-event.timestamp) * NS2MS;
         mQ.add(0);
     }
     public void setRuning(boolean running){this.running = running;}
 }
-

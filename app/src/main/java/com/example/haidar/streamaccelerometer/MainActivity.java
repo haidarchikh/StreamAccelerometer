@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -26,12 +27,20 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     private Switch mSwitch;
     private boolean mTraining;
     private AccelerometerDataSampler mSampler;
-
+    private boolean streaming = false;
+    private PowerManager mPowerManager;
+    private PowerManager.WakeLock mWakeLock;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mPowerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                "StreamAccelerometer");
+
+
 
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         hostName = (EditText) findViewById(R.id.editTextIP);
@@ -64,15 +73,21 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         mHostPort = Integer.parseInt(hostPort.getText().toString());
         switch (view.getId()) {
             case R.id.startStreaming:
-                mSampler =new AccelerometerDataSampler(mSensorManager , mHostIP,mHostPort , mLabel , mTraining );
+                if(!streaming){
+                    mSampler =new AccelerometerDataSampler(mSensorManager , mHostIP,mHostPort , mLabel , mTraining );
+                    mSampler.setRuning(true);
+                    new Thread(mSampler).start();
+                    //mSampler.start();
+                    streaming = true;
+                    mWakeLock.acquire();
 
-                mSampler.setRuning(true);
-                new Thread(mSampler).start();
-                //mSampler.start();
+                }
                 break;
             case R.id.stopStreaming:
                 if(mSampler !=null){
                     mSampler.setRuning(false);
+                    streaming = false;
+                    mWakeLock.release();
                 }
                 break;
         }

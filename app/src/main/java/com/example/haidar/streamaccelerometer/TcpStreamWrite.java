@@ -39,10 +39,9 @@ public class TcpStreamWrite extends Thread  {
         while(running){
             try {
                 mJSON = mQueue.take();
-            } catch (InterruptedException e) {
-            }
-            pw.println(mJSON);
-            pw.flush();
+                pw.println(mJSON);
+                pw.flush();
+            } catch (InterruptedException e) {pw.close();}
         }
         pw.close();
     }
