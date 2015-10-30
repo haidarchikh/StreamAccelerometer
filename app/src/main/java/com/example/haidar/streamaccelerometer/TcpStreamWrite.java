@@ -1,27 +1,21 @@
 package com.example.haidar.streamaccelerometer;
 
 
-import android.content.Context;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.os.*;
 
+import java.util.Date;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.math.RoundingMode;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.text.DecimalFormat;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 
 public class TcpStreamWrite extends Thread  {
-    private boolean running = true;
+    private boolean running;
     private Socket mySocket;
     private JSONObject mJSON;
     private OutputStream os;
@@ -32,8 +26,11 @@ public class TcpStreamWrite extends Thread  {
     private volatile float mTiltX;
     private volatile float mTiltY;
     private volatile float mTiltZ;
+    private volatile long mTimeStamp;
     private boolean mTraining ;
+    private static final long NS2MS = 1L / 1000000L;
     public static final DecimalFormat mDF = new DecimalFormat("0.000");
+    private BlockingQueue<JSONObject> mQueue = new ArrayBlockingQueue<JSONObject>(100);
 
 
 
@@ -48,8 +45,7 @@ public class TcpStreamWrite extends Thread  {
         // Server address
         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_FOREGROUND);
         try {
-            //InetAddress serverAddr = InetAddress.getByName(mHostIP);
-            //mySocket = new Socket(serverAddr ,mHostport);
+
             mySocket = new Socket(mHostIP,mHostport);
             os = mySocket.getOutputStream();
             pw = new PrintWriter(os);
@@ -61,6 +57,7 @@ public class TcpStreamWrite extends Thread  {
 
                 mJSON = new JSONObject();
                 try {
+                    mJSON.put("TimeStamp" ,String.valueOf(mTimeStamp));
                     mJSON.put("x", mDF.format(mTiltX));
                     mJSON.put("y", mDF.format(mTiltY));
                     mJSON.put("z", mDF.format(mTiltZ));
@@ -80,9 +77,9 @@ public class TcpStreamWrite extends Thread  {
 
         }else {
             while(running){
-
                 mJSON = new JSONObject();
                 try {
+                    mJSON.put("TimeStamp" ,String.valueOf(mTimeStamp));
                     mJSON.put("x", mDF.format(mTiltX));
                     mJSON.put("y", mDF.format(mTiltY));
                     mJSON.put("z", mDF.format(mTiltZ));
@@ -103,10 +100,11 @@ public class TcpStreamWrite extends Thread  {
     }
 
 
-    public void stream(float tiltX, float tiltY , float tiltZ ) {
+    public void stream(float tiltX, float tiltY , float tiltZ, long timestamp ) {
         mTiltX = tiltX;
         mTiltY = tiltY;
         mTiltZ = tiltZ;
+        mTimeStamp = (new Date()).getTime()-(System.nanoTime()-timestamp) * NS2MS;
     }
 
 

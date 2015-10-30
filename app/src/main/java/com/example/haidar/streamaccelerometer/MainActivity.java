@@ -35,6 +35,7 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
     private String mLabel;
     private Switch mSwitch;
     private boolean mTraining;
+    private AccelerometerDataSampler mSampler;
 
 
     @Override
@@ -97,7 +98,7 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
 
         super.onResume();
         // register Listener for SensorManager and Accelerometer sensor
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_GAME);
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     @Override
@@ -134,7 +135,7 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
     @Override
     public void onSensorChanged(SensorEvent event) {
         if(mTcpStreamWrite != null) {
-            mTcpStreamWrite.stream(event.values[0], event.values[1],event.values[2]);
+            mTcpStreamWrite.stream(event.values[0], event.values[1],event.values[2] , event.timestamp);
         }
     }
 
