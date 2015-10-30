@@ -41,7 +41,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Stream"
-            android:id="@+id/buttonStreamWrite"
+            android:id="@+id/startStreaming"
             android:onClick="myStreamHandler"
             android:layout_gravity="center_horizontal" />
         <Button
@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:text="Stop Streaming"
             android:onClick="myStreamHandler"
-            android:id="@+id/buttonStramRead" />
+            android:id="@+id/stopStreaming" />
         <Spinner
 
             android:layout_width="wrap_content"

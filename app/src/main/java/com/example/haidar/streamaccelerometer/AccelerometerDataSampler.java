@@ -4,76 +4,108 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.util.Log;
-
+import android.os.Process;
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.List;
-
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 /**
  * Created by haidar on 2015-10-30.
  */
-public class AccelerometerDataSampler extends Thread implements SensorEventListener {
+public class AccelerometerDataSampler implements SensorEventListener , Runnable {
 
-    private List<JSONObject> dataQueue;
-    private SensorManager sensorManager;
-    private long SENSOR_READING_PERIOD = 20000;
-    private long endTime;
+    private SensorManager mSensorManager;
+    private Sensor mAccelerometer;
+    private TcpStreamWrite mTcpStreamWrite;
+    private String mHostIP;
+    private int mHostport;
+    private String mLabel;
+    private boolean mTraining ;
+    private JSONObject mJSON;
+    private volatile float mTiltX;
+    private volatile float mTiltY;
+    private volatile float mTiltZ;
+    private volatile long mTimeStamp;
+    private boolean running;
     public static final DecimalFormat mDF = new DecimalFormat("0.000");
+    private BlockingQueue<JSONObject> mQTCP = new ArrayBlockingQueue<JSONObject>(100);
+    private BlockingQueue<Integer> mQ = new ArrayBlockingQueue<Integer>(100);
 
-    public List<JSONObject> getDataQueue() {
-        return dataQueue;
+
+    public AccelerometerDataSampler(SensorManager mSensorManager ,String mHostIP , int mHostport ,
+                                    String mLabel , boolean mTraining){
+        this.mSensorManager = mSensorManager;
+        this.mHostIP = mHostIP;
+        this.mHostport = mHostport;
+        this.mLabel = mLabel;
+        this.mTraining = mTraining;
     }
-
-    public void setSensorManager(SensorManager sensorManager) {
-        this.sensorManager = sensorManager;
-    }
-
 
     public void run() {
-        sensorManager.registerListener((SensorEventListener) this,
-                sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-                SensorManager.SENSOR_DELAY_FASTEST);
 
-        dataQueue = new ArrayList<JSONObject>();
-        endTime = System.currentTimeMillis() + SENSOR_READING_PERIOD;
+        android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_FOREGROUND);
+        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+
+        mTcpStreamWrite = new TcpStreamWrite(mHostIP, mHostport, mQTCP);
+        mTcpStreamWrite.setRuning(true);
+        mTcpStreamWrite.start();
+
+        if (mTraining) {
+            while (running) {
+                try {
+                    mQ.take();
+                    mJSON = new JSONObject();
+                    mJSON.put("TimeStamp", String.valueOf(mTimeStamp));
+                    mJSON.put("x", mDF.format(mTiltX));
+                    mJSON.put("y", mDF.format(mTiltY));
+                    mJSON.put("z", mDF.format(mTiltZ));
+                    mJSON.put("label", mLabel);
+                    mQTCP.put(mJSON);
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        } else {
+            while (running) {
+                try {
+                    mQ.take();
+                    mJSON = new JSONObject();
+                    mJSON.put("TimeStamp", String.valueOf(mTimeStamp));
+                    mJSON.put("x", mDF.format(mTiltX));
+                    mJSON.put("y", mDF.format(mTiltY));
+                    mJSON.put("z", mDF.format(mTiltZ));
+                    mQTCP.put(mJSON);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        mSensorManager.unregisterListener(this, mAccelerometer);
+        mTcpStreamWrite.setRuning(false);
+        mTcpStreamWrite.interrupt();
     }
+
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
 
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (System.currentTimeMillis() < endTime) {
-            float[] values = event.values;
-            float vx = values[0];
-            float vy = values[1];
-            float vz = values[2];
-
-            Log.d("INFO", vx + "/" + vy + "/" + vz);
-            JSONObject mJSON = new JSONObject();
-            try {
-                mJSON.put("x", mDF.format(vx));
-                mJSON.put("y", mDF.format(vy));
-                mJSON.put("z", mDF.format(vz));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-            //mJSON.put("TimeStamp" ,String.valueOf(new Date().getTime()));
-            dataQueue.add(mJSON);
-        } else {
-            sensorManager.unregisterListener((SensorEventListener) this,
-                    sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
-            Log.d("INFO", "READING ENDED");
-
-        }
+        mTiltX = event.values[0];
+        mTiltY = event.values[1];
+        mTiltZ = event.values[2];
+        mTimeStamp = System.currentTimeMillis();
+        mQ.add(0);
     }
+    public void setRuning(boolean running){this.running = running;}
 }
 

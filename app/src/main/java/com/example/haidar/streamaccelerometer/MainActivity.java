@@ -2,10 +2,6 @@ package com.example.haidar.streamaccelerometer;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.Menu;
@@ -17,20 +13,14 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Switch;
-import android.widget.ToggleButton;
 
-import java.io.IOException;
-
-
-public class MainActivity extends Activity implements SensorEventListener ,AdapterView.OnItemSelectedListener {
+public class MainActivity extends Activity implements AdapterView.OnItemSelectedListener {
 
     private SensorManager mSensorManager;
-    private Sensor mAccelerometer;
     private EditText hostName;
     private EditText hostPort;
     private String mHostIP;
     private int mHostPort;
-    private TcpStreamWrite mTcpStreamWrite;
     private Spinner mSpinner ;
     private String mLabel;
     private Switch mSwitch;
@@ -43,11 +33,13 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         hostName = (EditText) findViewById(R.id.editTextIP);
         hostPort = (EditText) findViewById(R.id.editTextPort);
         mSpinner = (Spinner) findViewById(R.id.spinner);
         mSpinner.setOnItemSelectedListener(this);
         mSwitch = (Switch) findViewById(R.id.switch1);
+
         mSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
@@ -61,53 +53,38 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
                 }
             }
         });
-
+        // Assign the array to the spinner
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.labels, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        // Apply the adapter to the spinner
         mSpinner.setAdapter(adapter);
-
-        // Instantiate SensorManager
-        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        // Get Accelerometer sensor
-        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_GAME);
-
     }
     public void myStreamHandler(View view){
         mHostIP = hostName.getText().toString();
         mHostPort = Integer.parseInt(hostPort.getText().toString());
         switch (view.getId()) {
-            case R.id.buttonStreamWrite:
-                mTcpStreamWrite = new TcpStreamWrite(mHostIP,mHostPort , mLabel , mTraining);
-                mTcpStreamWrite.setRuning(true);
-                mTcpStreamWrite.start();
+            case R.id.startStreaming:
+                mSampler =new AccelerometerDataSampler(mSensorManager , mHostIP,mHostPort , mLabel , mTraining );
+
+                mSampler.setRuning(true);
+                new Thread(mSampler).start();
+                //mSampler.start();
                 break;
-            case R.id.buttonStramRead:
-                if(mTcpStreamWrite !=null){
-                    mTcpStreamWrite.setRuning(false);
-                    //mAccelerometer = null;
+            case R.id.stopStreaming:
+                if(mSampler !=null){
+                    mSampler.setRuning(false);
                 }
                 break;
         }
     }
     @Override
     protected void onResume() {
-
         super.onResume();
-        // register Listener for SensorManager and Accelerometer sensor
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // unregister Listener for SensorManager
-        //mTcpStreamWrite.setRuning(false);
-        //mAccelerometer = null;
-        //mSensorManager.unregisterListener(this);
     }
 
     @Override
@@ -131,19 +108,6 @@ public class MainActivity extends Activity implements SensorEventListener ,Adapt
 
         return super.onOptionsItemSelected(item);
     }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        if(mTcpStreamWrite != null) {
-            mTcpStreamWrite.stream(event.values[0], event.values[1],event.values[2] , event.timestamp);
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-    }
-
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
         mLabel = (String) parent.getItemAtPosition(position);
