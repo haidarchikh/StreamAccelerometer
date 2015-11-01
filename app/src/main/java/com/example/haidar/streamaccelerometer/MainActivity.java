@@ -3,8 +3,7 @@ package com.example.haidar.streamaccelerometer;
 import android.app.Activity;
 import android.content.Context;
 import android.hardware.SensorManager;
-import android.os.Bundle;
-import android.os.PowerManager;
+import android.os.*;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -22,25 +21,22 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     private EditText hostPort;
     private String mHostIP;
     private int mHostPort;
+    private Switch mSwitch;
     private Spinner mSpinner ;
     private String mLabel;
-    private Switch mSwitch;
-    private boolean mTraining;
     private AccelerometerDataSampler mSampler;
     private boolean streaming = false;
-    private PowerManager mPowerManager;
+    private boolean mTraining;
     private PowerManager.WakeLock mWakeLock;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_FOREGROUND);
 
-        mPowerManager = (PowerManager) getSystemService(POWER_SERVICE);
-        mWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                "StreamAccelerometer");
-
-
+        mWakeLock =((PowerManager) getSystemService(POWER_SERVICE))
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TCP_Accelerometer");
 
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         hostName = (EditText) findViewById(R.id.editTextIP);
@@ -63,10 +59,14 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
             }
         });
         // Assign the array to the spinner
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
-                R.array.labels, android.R.layout.simple_spinner_item);
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this,
+                R.array.labels,
+                android.R.layout.simple_spinner_item
+        );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mSpinner.setAdapter(adapter);
+
     }
     public void myStreamHandler(View view){
         mHostIP = hostName.getText().toString();
@@ -74,17 +74,21 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         switch (view.getId()) {
             case R.id.startStreaming:
                 if(!streaming){
-                    mSampler =new AccelerometerDataSampler(mSensorManager , mHostIP,mHostPort , mLabel , mTraining );
+                    mSampler = new AccelerometerDataSampler(
+                            mSensorManager ,
+                            mHostIP,
+                            mHostPort ,
+                            mLabel ,
+                            mTraining
+                    );
                     mSampler.setRuning(true);
-                    new Thread(mSampler).start();
-                    //mSampler.start();
+                    mSampler.start();
                     streaming = true;
                     mWakeLock.acquire();
-
                 }
                 break;
             case R.id.stopStreaming:
-                if(mSampler !=null){
+                if(streaming){
                     mSampler.setRuning(false);
                     streaming = false;
                     mWakeLock.release();
