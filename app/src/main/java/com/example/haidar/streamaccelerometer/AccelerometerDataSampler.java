@@ -23,28 +23,43 @@ import static android.os.SystemClock.elapsedRealtime;
  */
 public class AccelerometerDataSampler extends Thread implements SensorEventListener {
 
+    private static final String X = "x";
+    private static final String Y = "y";
+    private static final String Z = "z";
+    private static final String TIMESTAMP = "timestamp";
+    private static final String POSITION = "position";
+    private static final String LABEL = "label";
+    private static final String QUESTION_MARK = "?";
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
-    private TcpStreamWrite mTcpStreamWrite;
+    //private TcpStreamWrite mTcpStreamWrite;
+    private RabbitMQSend mRabbit;
     private String mHostIP;
-    private int mHostport;
+//    private int mHostport;
+    private String mSensorPosition;
     private String mLabel;
     private boolean mTraining ;
     private JSONObject mJSON;
     private boolean running;
     private BlockingQueue<JSONObject> mQTCP = new ArrayBlockingQueue<JSONObject>(100);
-    private BlockingQueue<double[]> mQ = new ArrayBlockingQueue<double[]>(100);
-    private static final DecimalFormat mDF = new DecimalFormat("0.000");
+    private BlockingQueue<double[]>   mQ    = new ArrayBlockingQueue<double[]>(100);
+    private static final DecimalFormat mDF  = new DecimalFormat("0.000");
     private int mSamplingRate;
+    private int mSentRecords;
     private long mStartTime = elapsedRealtime();
+    private MainActivity mMain;
 
-    public AccelerometerDataSampler(SensorManager mSensorManager ,String mHostIP , int mHostport ,
-                                    String mLabel , boolean mTraining){
-        this.mSensorManager = mSensorManager;
-        this.mHostIP        = mHostIP;
-        this.mHostport      = mHostport;
-        this.mLabel         = mLabel;
-        this.mTraining      = mTraining;
+    public AccelerometerDataSampler( MainActivity mMain,SensorManager mSensorManager ,
+                                    String mHostIP , String mSensorPosition ,
+                                    String mLabel , boolean mTraining)
+    {
+        this.mMain           = mMain;
+        this.mSensorManager  = mSensorManager;
+        this.mHostIP         = mHostIP;
+        //this.mHostport      = mHostport;
+        this.mSensorPosition = mSensorPosition;
+        this.mLabel          = mLabel;
+        this.mTraining       = mTraining;
     }
 
     public void run() {
@@ -52,57 +67,41 @@ public class AccelerometerDataSampler extends Thread implements SensorEventListe
         android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_FOREGROUND);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-
+/*
         mTcpStreamWrite = new TcpStreamWrite(mHostIP, mHostport, mQTCP);
         mTcpStreamWrite.setRuning(true);
         mTcpStreamWrite.start();
+*/
+        mRabbit = new RabbitMQSend(mHostIP, Consts.EXCHANGE_NAME_ACCELEROMETER);
+        mRabbit.setRunning(true);
+        mRabbit.setmInQ(mQTCP);
+        mRabbit.start();
 
-        if (mTraining) {
-            while (running) {
-                try {
-                    double [] record = mQ.take();
-                    // [ TIME , X , Y ,Z ]
-                    long timestamp = Double.valueOf(record[0]).longValue();
-                    mJSON = new JSONObject();
-                    mJSON.put("TimeStamp", String.valueOf(timestamp));
-                    mJSON.put("x", mDF.format(record[1]));
-                    mJSON.put("y", mDF.format(record[2]));
-                    mJSON.put("z", mDF.format(record[3]));
-                    mJSON.put("label", mLabel);
-                    mQTCP.put(mJSON);
-                    // rough sampling rate
-                    mSamplingRate++;
-                    if(elapsedRealtime() > mStartTime + 1000 ){
-                        mStartTime = elapsedRealtime();
-                        Log.d("Sampling Rate", String.valueOf(mSamplingRate));
-                        mSamplingRate = 0 ;
-                    }
-
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.getCause();
+        while (running) {
+            try {
+                double [] record = mQ.take();
+                // [ TIME , X , Y ,Z ]
+                long timestamp = Double.valueOf(record[0]).longValue();
+                mJSON = new JSONObject();
+                mJSON.put(POSITION, mSensorPosition);
+                mJSON.put(TIMESTAMP,String.valueOf(timestamp));
+                mJSON.put(X, mDF.format(record[1]));
+                mJSON.put(Y, mDF.format(record[2]));
+                mJSON.put(Z, mDF.format(record[3]));
+                if(mTraining) {
+                    mJSON.put(LABEL, mLabel);
+                } else {
+                    mJSON.put(LABEL, QUESTION_MARK);
                 }
-            }
-        } else {
-            while (running) {
-                try {
-                    double [] record =  mQ.take();
-                    // [ TIME , X , Y ,Z ]
-                    long timestamp = Double.valueOf(record[0]).longValue();
-
-                    mJSON = new JSONObject();
-                    mJSON.put("TimeStamp", String.valueOf(timestamp));
-                    mJSON.put("x", mDF.format(record[1]));
-                    mJSON.put("y", mDF.format(record[2]));
-                    mJSON.put("z", mDF.format(record[3]));
-                    mQTCP.put(mJSON);
-                    // rough sampling rate
-                    mSamplingRate++;
-                    if(elapsedRealtime() > mStartTime + 1000 ){
-                        mStartTime = elapsedRealtime();
-                        Log.d("Sampling Rate", String.valueOf(mSamplingRate));
-                        mSamplingRate = 0 ;
+                mQTCP.put(mJSON);
+                // rough sampling rate
+                mSamplingRate++;
+                mSentRecords++;
+                if(elapsedRealtime() > mStartTime + 1000 ){
+                    mStartTime = elapsedRealtime();
+                    mMain.mDisplayMsg(String.valueOf(mSamplingRate),
+                            String.valueOf(mSentRecords));
+                    mSamplingRate = 0 ;
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -110,12 +109,7 @@ public class AccelerometerDataSampler extends Thread implements SensorEventListe
                     e.getCause();
                 }
             }
-        }
     }
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-    }
-
     @Override
     public void onSensorChanged(SensorEvent event) {
         // event time uses elapsedRealtime() (uptime include deep sleep)
@@ -126,23 +120,30 @@ public class AccelerometerDataSampler extends Thread implements SensorEventListe
         // [ TIME , X , Y ,Z ]
             double [] record =
                     {
-                            mTimeStampEvent ,
-                            event.values[0] ,
-                            event.values[1] ,
-                            event.values[2]
+                      mTimeStampEvent ,
+                      event.values[0] ,
+                      event.values[1] ,
+                      event.values[2]
                     };
         mQ.add(record);
     }
-
     public void setRuning(boolean running) {
 
         this.running = running;
         if(!running){
             mSensorManager.unregisterListener(this, mAccelerometer);
             this.interrupt();
+            mMain.mDisplayMsg(String.valueOf(mSamplingRate),
+                    String.valueOf(mSentRecords));
+
+            Log.d("Number of sent records", String.valueOf(mSentRecords));
             Log.d("mQ", String.valueOf(mQ.remainingCapacity()));
-            Log.d("mQTCP", String.valueOf(mQTCP.remainingCapacity()));
-            mTcpStreamWrite.setRuning(false);
+            Log.d("mQRabbit", String.valueOf(mQTCP.remainingCapacity()));
+//            mTcpStreamWrite.setRuning(false);
+            mRabbit.setRunning(false);
         }
+    }
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 }

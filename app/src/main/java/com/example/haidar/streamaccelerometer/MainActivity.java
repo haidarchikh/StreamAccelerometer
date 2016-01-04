@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.hardware.SensorManager;
 import android.os.*;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -13,14 +14,18 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Switch;
+import android.widget.TextView;
 
 public class MainActivity extends Activity implements AdapterView.OnItemSelectedListener {
 
     private SensorManager mSensorManager;
     private EditText hostName;
     private EditText hostPort;
+    private TextView mSamplingRate;
+    private TextView mSentRecprds;
     private String mHostIP;
-    private int mHostPort;
+    private int mHostport;
+    private String mSensorPosition;
     private Switch mSwitch;
     private Spinner mSpinner ;
     private String mLabel;
@@ -28,6 +33,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     private boolean streaming = false;
     private boolean mTraining;
     private PowerManager.WakeLock mWakeLock;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,11 +45,13 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                 .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TCP_Accelerometer");
 
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        hostName = (EditText) findViewById(R.id.editTextIP);
-        hostPort = (EditText) findViewById(R.id.editTextPort);
-        mSpinner = (Spinner) findViewById(R.id.spinner);
+        hostName       = (EditText) findViewById(R.id.editTextIP);
+        hostPort       = (EditText) findViewById(R.id.editTextPort);
+        mSwitch        = (Switch) findViewById(R.id.switch1);
+        mSamplingRate  = (TextView) findViewById(R.id.textSamplingView);
+        mSentRecprds   = (TextView) findViewById(R.id.textSentRecprds);
+        mSpinner       = (Spinner) findViewById(R.id.spinner);
         mSpinner.setOnItemSelectedListener(this);
-        mSwitch = (Switch) findViewById(R.id.switch1);
 
         mSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -69,15 +77,17 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
     }
     public void myStreamHandler(View view){
-        mHostIP = hostName.getText().toString();
-        mHostPort = Integer.parseInt(hostPort.getText().toString());
+        mHostIP         = hostName.getText().toString();
+        //   mHostport       = Integer.parseInt(hostPort.getText().toString());
+        mSensorPosition = hostPort.getText().toString();
         switch (view.getId()) {
             case R.id.startStreaming:
                 if(!streaming){
-                    mSampler = new AccelerometerDataSampler(
+                    mSampler = new AccelerometerDataSampler( this,
                             mSensorManager ,
                             mHostIP,
-                            mHostPort ,
+                     //       mHostport ,
+                            mSensorPosition ,
                             mLabel ,
                             mTraining
                     );
@@ -96,6 +106,17 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                 break;
         }
     }
+
+    public void mDisplayMsg( final String samplingRate ,final String sentRecords){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mSamplingRate.setText("Sampling Rate : "+samplingRate);
+                mSentRecprds.setText("      Sent Records : "+sentRecords);
+            }
+        });
+    }
+
     @Override
     protected void onResume() {
         super.onResume();

@@ -19,7 +19,7 @@ public class TcpStreamWrite extends Thread  {
     private String mHostIP;
     private int mHostport;
     private BlockingQueue<JSONObject> mQueue = new ArrayBlockingQueue<JSONObject>(100);
-    private long count;
+    private int count;
 
     public TcpStreamWrite(String mHostIP , int mHostport ,BlockingQueue<JSONObject> mQueue ){
         this.mHostIP    = mHostIP;
@@ -46,10 +46,11 @@ public class TcpStreamWrite extends Thread  {
                 pw.print(mJSON);
                 count++;
                 pw.flush();
-                // to push 100 record at time
+                // push 100 record at time
             /*
                 if(count%100==0){
                     pw.flush();
+                    count = 0;
                 }
             */
             } catch (InterruptedException e) {
@@ -61,7 +62,6 @@ public class TcpStreamWrite extends Thread  {
         this.running = running;
         if(!running){
             this.interrupt();
-            Log.d("Number of sent records", String.valueOf(count));
             Log.d("Last record", mJSON.toString());
             pw.flush();
             pw.close();

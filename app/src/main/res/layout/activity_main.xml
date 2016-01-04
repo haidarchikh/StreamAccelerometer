@@ -16,7 +16,7 @@
             android:inputType="text"
             android:ems="10"
             android:hint="Server IP"
-            android:text="192.168.1.2"
+            android:text="192.168.1.3"
             android:id="@+id/editTextIP" />
 
         <EditText
@@ -25,10 +25,9 @@
             android:inputType="number"
             android:ems="10"
             android:id="@+id/editTextPort"
-            android:text="5000"
+            android:text="waist"
             android:layout_weight="1"
             android:hint="Server port" />
-
 
     </LinearLayout>
 
@@ -66,6 +65,26 @@
         android:text="Training"
         android:id="@+id/switch1"
         android:checked="false" />
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sampling Rate : "
+            android:id="@+id/textSamplingView" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:id="@+id/textSentRecprds" />
+
+    </LinearLayout>
+
+
 
 
 </LinearLayout>

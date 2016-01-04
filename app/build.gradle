@@ -20,5 +20,6 @@ android {
 }
 
 dependencies {
+    compile "com.rabbitmq:amqp-client:3.5.6"
     compile fileTree(dir: 'libs', include: ['*.jar'])
 }
